@@ -1069,28 +1069,23 @@ fn examples_table_flows_to_trait() {
     );
 }
 
-#[test_case::test_case("list", json!({"tags": ["architecture"]}) ; "memory_list")]
-#[test_case::test_case("read", json!({"path": "architecture.md"}) ; "memory_read")]
-#[test_case::test_case("write", json!({"path": "architecture.md", "tags": ["architecture"], "content": "Project notes."}) ; "memory_write")]
-#[test_case::test_case("delete", json!({"path": "architecture.md"}) ; "memory_delete")]
-fn memory_command_guidance_parses(command: &str, mut input: Value) {
+#[test]
+fn memory_command_guidance_parses() {
     let (reg, _host) = builtins_host();
     let entry = reg.get("memory").expect("memory tool not registered");
     let schema = entry.tool.schema();
     let description = schema["properties"]["command"]["description"]
         .as_str()
         .expect("command guidance missing");
-    let prefix = format!("- `{command}");
-    let guidance = description
-        .lines()
-        .find(|line| line.starts_with(&prefix))
-        .expect("command must be documented");
-    let advertised_command = guidance.split('`').nth(1).expect("command value missing");
-    input["command"] = json!(advertised_command);
-    entry
-        .tool
-        .parse(&input)
-        .unwrap_or_else(|err| panic!("advertised memory input {input} must parse: {err}"));
+    for command in schema["properties"]["command"]["enum"].as_array().unwrap() {
+        let command = command.as_str().unwrap();
+        assert!(description.contains(&format!("- `{command}`:")));
+        let input = json!({"command": command});
+        entry
+            .tool
+            .parse(&input)
+            .unwrap_or_else(|err| panic!("advertised memory input {input} must parse: {err}"));
+    }
 }
 
 #[test]
